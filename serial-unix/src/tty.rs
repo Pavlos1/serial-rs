@@ -51,7 +51,7 @@ impl TTYPort {
     /// * `InvalidInput` if `port` is not a valid device name.
     /// * `Io` for any other error while opening or initializing the device.
     pub fn open(path: &Path) -> core::Result<Self> {
-        use libc::{O_RDWR, O_NONBLOCK, F_SETFL, EINVAL};
+        use libc::{O_RDWR, EINVAL};
 
         let cstr = match CString::new(path.as_os_str().as_bytes()) {
             Ok(s) => s,

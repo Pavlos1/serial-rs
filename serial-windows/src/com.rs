@@ -11,8 +11,11 @@ use std::os::windows::prelude::*;
 
 use core::{SerialDevice, SerialPortSettings};
 
-use libc::c_void;
+use libc::{c_void, c_ulong};
 use ffi::*;
+
+const FILE_SHARE_READ: c_ulong = 1;
+const FILE_SHARE_WRITE: c_ulong = 2;
 
 /// A serial port implementation for Windows COM ports.
 ///

@@ -47,7 +47,8 @@ impl COMPort {
 
         let handle = unsafe {
             CreateFileW(name.as_ptr(), GENERIC_READ | GENERIC_WRITE, 0,
-                        ptr::null_mut(), OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0 as HANDLE)
+                        ptr::null_mut(), OPEN_EXISTING,
+                        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, 0 as HANDLE)
         };
 
         let timeout = Duration::from_millis(100);

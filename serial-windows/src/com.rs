@@ -122,14 +122,14 @@ impl io::Read for COMPort {
                  &mut overlapped as LPOVERLAPPED);
 
         let mut err = io::Error::last_os_error();
-        if (read_result == 0) && is_io_pending(err) {
+        if (read_result == 0) && !is_io_pending(err) {
             return Err(err);
         }
 
         while !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
         &mut bytes_transferred as LPDWORD, true) {
             err = io::Error::last_os_error();
-            if err != io::Error::from_raw_os_error(ERROR_IO_PENDING) {
+            if !is_io_pending(err) {
                 return Err(err);
             }
         }
@@ -158,14 +158,14 @@ impl io::Write for COMPort {
                                      &mut overlapped as LPOVERLAPPED);
 
         let mut err = io::Error::last_os_error();
-        if (write_result == 0) && is_io_pending(err) {
+        if (write_result == 0) && !is_io_pending(err) {
             return Err(err);
         }
 
         while !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
         &mut bytes_transferred as LPDWORD, true) {
             err = io::Error::last_os_error();
-            if err != io::Error::from_raw_os_error(ERROR_IO_PENDING) {
+            if !is_io_pending(err) {
                 return Err(err);
             }
         }

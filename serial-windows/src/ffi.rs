@@ -25,6 +25,8 @@ pub const FILE_ATTRIBUTE_NORMAL: DWORD = 0x80;
 pub const FILE_FLAG_OVERLAPPED: DWORD = 0x40000000;
 pub const INVALID_HANDLE_VALUE: HANDLE = !0 as HANDLE;
 
+pub const ERROR_IO_PENDING: i32 = 997;
+
 #[repr(C)]
 pub struct SECURITY_ATTRIBUTES {
     pub nLength: DWORD,

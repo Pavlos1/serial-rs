@@ -12,6 +12,7 @@ use std::os::windows::prelude::*;
 use core::{SerialDevice, SerialPortSettings};
 
 use libc::{c_void, c_ulong};
+use std::ptr::null_mut;
 use ffi::*;
 
 /// A serial port implementation for Windows COM ports.
@@ -100,17 +101,31 @@ impl io::Read for COMPort {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let mut len: DWORD = 0;
 
-        match unsafe { ReadFile(self.handle, buf.as_mut_ptr() as *mut c_void, buf.len() as DWORD, &mut len, ptr::null_mut()) } {
-            0 => Err(io::Error::last_os_error()),
-            _ => {
-                if len != 0 {
-                    Ok(len as usize)
-                }
-                else {
-                    Err(io::Error::new(io::ErrorKind::TimedOut, "Operation timed out"))
-                }
+        let mut overlapped = OVERLAPPED {
+            Internal: null_mut(),
+            InternalHigh: null_mut(),
+            Offset: 0,
+            OffsetHigh: 0,
+            hEvent: null_mut(),
+        };
+
+        let read_result = ReadFile(self.handle, buf.as_mut_ptr() as *mut c_void,
+                 buf.len() as DWORD, &mut len,
+                 &mut overlapped as LPOVERLAPPED);
+
+        let mut err = io::Error::last_os_error();
+        if (read_result == 0) && (err != io::Error::from_raw_os_error(ERROR_IO_PENDING)) {
+            return Err(err);
+        }
+
+        while GetOverlappedResult() == 0 {
+            err = io::Error::last_os_error();
+            if err != io::Error::from_raw_os_error(ERROR_IO_PENDING) {
+                return Err(err);
             }
         }
+
+        Ok(len as usize)
     }
 }
 
@@ -118,10 +133,32 @@ impl io::Write for COMPort {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut len: DWORD = 0;
 
-        match unsafe { WriteFile(self.handle, buf.as_ptr() as *mut c_void, buf.len() as DWORD, &mut len, ptr::null_mut()) } {
-            0 => Err(io::Error::last_os_error()),
-            _ => Ok(len as usize),
+        let mut overlapped = OVERLAPPED {
+            Internal: null_mut(),
+            InternalHigh: null_mut(),
+            Offset: 0,
+            OffsetHigh: 0,
+            hEvent: null_mut(),
+        };
+
+        let write_result = WriteFile(self.handle, buf.as_ptr() as *mut c_void,
+                                     buf.len() as DWORD,
+                                     &mut len,
+                                     &mut overlapped as LPOVERLAPPED);
+
+        let mut err = io::Error::last_os_error();
+        if (write_result == 0) && (err != io::Error::from_raw_os_error(ERROR_IO_PENDING)) {
+            return Err(err);
         }
+
+        while GetOverlappedResult() == 0 {
+            err = io::Error::last_os_error();
+            if err != io::Error::from_raw_os_error(ERROR_IO_PENDING) {
+                return Err(err);
+            }
+        }
+
+        Ok(len as usize)
     }
 
     fn flush(&mut self) -> io::Result<()> {

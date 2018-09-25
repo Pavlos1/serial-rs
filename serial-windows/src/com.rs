@@ -14,12 +14,8 @@ use core::{SerialDevice, SerialPortSettings};
 use libc::{c_void, c_ulong};
 use ffi::*;
 
-const FILE_SHARE_READ: c_ulong = 1;
-const FILE_SHARE_WRITE: c_ulong = 2;
-
 /// A serial port implementation for Windows COM ports.
-///
-/// The port will be closed when the value is dropped.
+#[derive(Clone)]
 pub struct COMPort {
     handle: HANDLE,
     timeout: Duration,
@@ -50,7 +46,7 @@ impl COMPort {
         name.push(0);
 
         let handle = unsafe {
-            CreateFileW(name.as_ptr(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+            CreateFileW(name.as_ptr(), GENERIC_READ | GENERIC_WRITE, 0,
                         ptr::null_mut(), OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0 as HANDLE)
         };
 
@@ -70,6 +66,10 @@ impl COMPort {
         }
     }
 
+    pub fn close(&mut self) {
+        CloseHandle(self.handle);
+    }
+
     fn escape_comm_function(&mut self, function: DWORD) -> core::Result<()> {
         match unsafe { EscapeCommFunction(self.handle, function) } {
             0 => Err(error::last_os_error()),
@@ -83,14 +83,6 @@ impl COMPort {
         match unsafe { GetCommModemStatus(self.handle, &mut status) } {
             0 => Err(error::last_os_error()),
             _ => Ok(status & pin != 0),
-        }
-    }
-}
-
-impl Drop for COMPort {
-    fn drop(&mut self) {
-        unsafe {
-            CloseHandle(self.handle);
         }
     }
 }

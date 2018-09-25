@@ -26,8 +26,7 @@ const O_NOCTTY: c_int = 0;
 
 
 /// A TTY-based serial port implementation.
-///
-/// The port will be closed when the value is dropped.
+#[derive(Clone)]
 pub struct TTYPort {
     fd: RawFd,
     timeout: Duration,
@@ -51,14 +50,14 @@ impl TTYPort {
     /// * `InvalidInput` if `port` is not a valid device name.
     /// * `Io` for any other error while opening or initializing the device.
     pub fn open(path: &Path) -> core::Result<Self> {
-        use libc::{O_RDWR, EINVAL};
+        use libc::{O_RDWR, O_NONBLOCK, F_SETFL, EINVAL};
 
         let cstr = match CString::new(path.as_os_str().as_bytes()) {
             Ok(s) => s,
             Err(_) => return Err(super::error::from_raw_os_error(EINVAL)),
         };
 
-        let fd = unsafe { libc::open(cstr.as_ptr(), O_RDWR | O_NOCTTY, 0) };
+        let fd = unsafe { libc::open(cstr.as_ptr(), O_RDWR | O_NOCTTY | O_NONBLOCK, 0) };
         if fd < 0 {
             return Err(super::error::last_os_error());
         }
@@ -68,11 +67,30 @@ impl TTYPort {
             timeout: Duration::from_millis(100),
         };
 
+        // get exclusive access to device
+        if let Err(err) = ioctl::tiocexcl(port.fd) {
+            return Err(super::error::from_io_error(err));
+        }
+
+        // clear O_NONBLOCK flag
+        if unsafe { libc::fcntl(port.fd, F_SETFL, 0) } < 0 {
+            return Err(super::error::last_os_error());
+        }
+
         // apply initial settings
         let settings = try!(port.read_settings());
         try!(port.write_settings(&settings));
 
         Ok(port)
+    }
+
+    pub fn close(&mut self) {
+        #![allow(unused_must_use)]
+        ioctl::tiocnxcl(self.fd);
+
+        unsafe {
+            libc::close(self.fd);
+        }
     }
 
     fn set_pin(&mut self, pin: c_int, level: bool) -> core::Result<()> {
@@ -93,17 +111,6 @@ impl TTYPort {
         match ioctl::tiocmget(self.fd) {
             Ok(pins) => Ok(pins & pin != 0),
             Err(err) => Err(super::error::from_io_error(err)),
-        }
-    }
-}
-
-impl Drop for TTYPort {
-    fn drop(&mut self) {
-        #![allow(unused_must_use)]
-        ioctl::tiocnxcl(self.fd);
-
-        unsafe {
-            libc::close(self.fd);
         }
     }
 }

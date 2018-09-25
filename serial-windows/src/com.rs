@@ -67,7 +67,7 @@ impl COMPort {
     }
 
     pub fn close(&mut self) {
-        CloseHandle(self.handle);
+        unsafe { CloseHandle(self.handle); }
     }
 
     fn escape_comm_function(&mut self, function: DWORD) -> core::Result<()> {

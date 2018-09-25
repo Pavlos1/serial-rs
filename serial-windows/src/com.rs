@@ -128,8 +128,8 @@ impl io::Read for COMPort {
             return Err(err);
         }
 
-        while !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
-        &mut bytes_transferred as LPDWORD, true) {
+        while unsafe { !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
+        &mut bytes_transferred as LPDWORD, true) } {
             err = io::Error::last_os_error();
             if !is_io_pending(&err) {
                 return Err(err);
@@ -166,8 +166,8 @@ impl io::Write for COMPort {
             return Err(err);
         }
 
-        while !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
-        &mut bytes_transferred as LPDWORD, true) {
+        while unsafe { !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
+        &mut bytes_transferred as LPDWORD, true) } {
             err = io::Error::last_os_error();
             if !is_io_pending(&err) {
                 return Err(err);

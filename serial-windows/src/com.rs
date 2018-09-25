@@ -97,7 +97,7 @@ impl AsRawHandle for COMPort {
     }
 }
 
-fn is_io_pending(err: io::Error) -> bool {
+fn is_io_pending(err: &io::Error) -> bool {
     match err.raw_os_error() {
         Some(c) => c == ERROR_IO_PENDING,
         None => false,
@@ -117,19 +117,21 @@ impl io::Read for COMPort {
             hEvent: null_mut(),
         };
 
-        let read_result = ReadFile(self.handle, buf.as_mut_ptr() as *mut c_void,
-                 buf.len() as DWORD, &mut len,
-                 &mut overlapped as LPOVERLAPPED);
+        let read_result = unsafe {
+            ReadFile(self.handle, buf.as_mut_ptr() as *mut c_void,
+                     buf.len() as DWORD, &mut len,
+                     &mut overlapped as LPOVERLAPPED)
+        };
 
         let mut err = io::Error::last_os_error();
-        if (read_result == 0) && !is_io_pending(err) {
+        if (read_result == 0) && !is_io_pending(&err) {
             return Err(err);
         }
 
         while !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
         &mut bytes_transferred as LPDWORD, true) {
             err = io::Error::last_os_error();
-            if !is_io_pending(err) {
+            if !is_io_pending(&err) {
                 return Err(err);
             }
         }
@@ -152,20 +154,22 @@ impl io::Write for COMPort {
             hEvent: null_mut(),
         };
 
-        let write_result = WriteFile(self.handle, buf.as_ptr() as *mut c_void,
-                                     buf.len() as DWORD,
-                                     &mut len,
-                                     &mut overlapped as LPOVERLAPPED);
+        let write_result = unsafe {
+            WriteFile(self.handle, buf.as_ptr() as *mut c_void,
+                      buf.len() as DWORD,
+                      &mut len,
+                      &mut overlapped as LPOVERLAPPED)
+        };
 
         let mut err = io::Error::last_os_error();
-        if (write_result == 0) && !is_io_pending(err) {
+        if (write_result == 0) && !is_io_pending(&err) {
             return Err(err);
         }
 
         while !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
         &mut bytes_transferred as LPDWORD, true) {
             err = io::Error::last_os_error();
-            if !is_io_pending(err) {
+            if !is_io_pending(&err) {
                 return Err(err);
             }
         }

@@ -97,9 +97,17 @@ impl AsRawHandle for COMPort {
     }
 }
 
+fn is_io_pending(err: io::Error) -> bool {
+    match err.raw_os_error() {
+        Some(c) => c == ERROR_IO_PENDING,
+        None => false,
+    }
+}
+
 impl io::Read for COMPort {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let mut len: DWORD = 0;
+        let mut bytes_transferred: DWORD = 0;
 
         let mut overlapped = OVERLAPPED {
             Internal: null_mut(),
@@ -114,17 +122,19 @@ impl io::Read for COMPort {
                  &mut overlapped as LPOVERLAPPED);
 
         let mut err = io::Error::last_os_error();
-        if (read_result == 0) && (err != io::Error::from_raw_os_error(ERROR_IO_PENDING)) {
+        if (read_result == 0) && is_io_pending(err) {
             return Err(err);
         }
 
-        while GetOverlappedResult() == 0 {
+        while !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
+        &mut bytes_transferred as LPDWORD, true) {
             err = io::Error::last_os_error();
             if err != io::Error::from_raw_os_error(ERROR_IO_PENDING) {
                 return Err(err);
             }
         }
 
+        assert_eq!(len, bytes_transferred);
         Ok(len as usize)
     }
 }
@@ -132,6 +142,7 @@ impl io::Read for COMPort {
 impl io::Write for COMPort {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut len: DWORD = 0;
+        let mut bytes_transferred: DWORD = 0;
 
         let mut overlapped = OVERLAPPED {
             Internal: null_mut(),
@@ -147,17 +158,19 @@ impl io::Write for COMPort {
                                      &mut overlapped as LPOVERLAPPED);
 
         let mut err = io::Error::last_os_error();
-        if (write_result == 0) && (err != io::Error::from_raw_os_error(ERROR_IO_PENDING)) {
+        if (write_result == 0) && is_io_pending(err) {
             return Err(err);
         }
 
-        while GetOverlappedResult() == 0 {
+        while !GetOverlappedResult(self.handle, &mut overlapped as LPOVERLAPPED,
+        &mut bytes_transferred as LPDWORD, true) {
             err = io::Error::last_os_error();
             if err != io::Error::from_raw_os_error(ERROR_IO_PENDING) {
                 return Err(err);
             }
         }
 
+        assert_eq!(len, bytes_transferred);
         Ok(len as usize)
     }
 

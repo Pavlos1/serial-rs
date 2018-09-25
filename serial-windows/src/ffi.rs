@@ -178,4 +178,9 @@ extern "system" {
     pub fn GetCommModemStatus(hFile: HANDLE, lpModemStat: *mut DWORD) -> BOOL;
 
     pub fn GetLastError() -> DWORD;
+
+    pub fn GetOverlappedResult(hFile: HANDLE,
+                               lpOverlapped: LPOVERLAPPED,
+                               lpNumberOfBytesTransferred: LPDWORD,
+                               bWait: bool) -> bool;
 }

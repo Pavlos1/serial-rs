@@ -183,4 +183,8 @@ extern "system" {
                                lpOverlapped: LPOVERLAPPED,
                                lpNumberOfBytesTransferred: LPDWORD,
                                bWait: BOOL) -> BOOL;
+
+    pub fn CreateEventW(lpEventAttributes: LPSECURITY_ATTRIBUTES,
+                        bManualReset: BOOL, bInitialState: BOOL,
+                        lpName: LPCWSTR) -> HANDLE;
 }

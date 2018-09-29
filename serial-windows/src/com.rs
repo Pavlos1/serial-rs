@@ -114,7 +114,8 @@ impl io::Read for COMPort {
             InternalHigh: null_mut(),
             Offset: 0,
             OffsetHigh: 0,
-            hEvent: null_mut(),
+            hEvent: unsafe { CreateEventW(null_mut(), 1,
+                                          0, null_mut()) },
         };
 
         let read_result = unsafe {
@@ -125,6 +126,7 @@ impl io::Read for COMPort {
 
         let mut err = io::Error::last_os_error();
         if (read_result == 0) && !is_io_pending(&err) {
+            unsafe { CloseHandle(overlapped.hEvent); }
             return Err(err);
         }
 
@@ -132,10 +134,12 @@ impl io::Read for COMPort {
         &mut bytes_transferred as LPDWORD, 1) == 0 } {
             err = io::Error::last_os_error();
             if !is_io_pending(&err) {
+                unsafe { CloseHandle(overlapped.hEvent); }
                 return Err(err);
             }
         }
 
+        unsafe { CloseHandle(overlapped.hEvent); }
         assert_eq!(len, bytes_transferred);
         Ok(len as usize)
     }
@@ -151,7 +155,8 @@ impl io::Write for COMPort {
             InternalHigh: null_mut(),
             Offset: 0,
             OffsetHigh: 0,
-            hEvent: null_mut(),
+            hEvent: unsafe { CreateEventW(null_mut(), 1,
+                                          0, null_mut()) },
         };
 
         let write_result = unsafe {
@@ -163,6 +168,7 @@ impl io::Write for COMPort {
 
         let mut err = io::Error::last_os_error();
         if (write_result == 0) && !is_io_pending(&err) {
+            unsafe { CloseHandle(overlapped.hEvent); }
             return Err(err);
         }
 
@@ -170,10 +176,12 @@ impl io::Write for COMPort {
         &mut bytes_transferred as LPDWORD, 1) == 0 } {
             err = io::Error::last_os_error();
             if !is_io_pending(&err) {
+                unsafe { CloseHandle(overlapped.hEvent); }
                 return Err(err);
             }
         }
 
+        unsafe { CloseHandle(overlapped.hEvent); }
         assert_eq!(len, bytes_transferred);
         Ok(len as usize)
     }

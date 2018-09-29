@@ -182,5 +182,5 @@ extern "system" {
     pub fn GetOverlappedResult(hFile: HANDLE,
                                lpOverlapped: LPOVERLAPPED,
                                lpNumberOfBytesTransferred: LPDWORD,
-                               bWait: bool) -> bool;
+                               bWait: BOOL) -> BOOL;
 }
